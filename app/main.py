@@ -9,16 +9,21 @@ app = FastAPI(title="MeiliSearch Multilingual Embedder",
              description="REST API for generating embeddings using paraphrase-multilingual-MiniLM-L12-v2",
              version="1.0.0")
 
-# Load the model at startup
 model = None
+
+def get_model():
+    global model
+    if model is None:
+        model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+    return model
 
 class TextRequest(BaseModel):
     texts: List[str]
 
 @app.on_event("startup")
-async def load_model():
-    global model
-    model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+async def startup_event():
+    # Do not load the model here to avoid long cold starts on Render free tier
+    return
 
 @app.get("/")
 async def root():
@@ -31,7 +36,8 @@ async def embed_texts(request: TextRequest):
     
     try:
         # Generate embeddings
-        embeddings = model.encode(request.texts, convert_to_numpy=True).tolist()
+        m = get_model()
+        embeddings = m.encode(request.texts, convert_to_numpy=True).tolist()
         return {"embeddings": embeddings}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
