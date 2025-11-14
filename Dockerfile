@@ -18,6 +18,13 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
        torch==1.13.1+cpu torchvision==0.14.1+cpu
 
+# Pre-download the SentenceTransformer model to avoid long cold starts
+RUN python - <<'PY'
+from sentence_transformers import SentenceTransformer
+SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+print('Model cached')
+PY
+
 # Copy application code
 COPY app/ ./app
 
@@ -28,5 +35,5 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Command to run the application (bind to Render's PORT)
-CMD ["sh", "-c", "gunicorn app.main:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000}"]
+# Command to run the application (bind to Render's PORT) with higher timeouts
+CMD ["sh", "-c", "gunicorn app.main:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --timeout ${GUNICORN_TIMEOUT:-300} --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT:-60} -w ${WEB_CONCURRENCY:-1} --threads ${GUNICORN_THREADS:-2}"]
