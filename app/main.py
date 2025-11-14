@@ -45,7 +45,7 @@ async def embed_texts(request: TextRequest):
         embeddings = m.encode(
             request.texts,
             convert_to_numpy=True,
-            batch_size=8,
+            batch_size=2,
             show_progress_bar=False,
         ).tolist()
         return {"embeddings": embeddings}
