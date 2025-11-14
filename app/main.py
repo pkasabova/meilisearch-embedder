@@ -35,9 +35,19 @@ async def embed_texts(request: TextRequest):
         raise HTTPException(status_code=400, detail="No texts provided")
     
     try:
+        # Reduce parallelism to lower memory footprint on small instances
+        os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+        os.environ.setdefault("OMP_NUM_THREADS", "1")
+        os.environ.setdefault("MKL_NUM_THREADS", "1")
+        os.environ.setdefault("NUMEXPR_MAX_THREADS", "1")
         # Generate embeddings
         m = get_model()
-        embeddings = m.encode(request.texts, convert_to_numpy=True).tolist()
+        embeddings = m.encode(
+            request.texts,
+            convert_to_numpy=True,
+            batch_size=8,
+            show_progress_bar=False,
+        ).tolist()
         return {"embeddings": embeddings}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
